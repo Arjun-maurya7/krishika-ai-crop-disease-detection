@@ -1,0 +1,14 @@
+cd "C:\Users\arjun\OneDrive\Desktop\Crop_detection\crop_desies_detection"
+
+py -3.12 --version
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r backend\requirements.txt
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload
+
+
+
+cd "C:\Users\arjun\OneDrive\Desktop\Crop_detection\crop_desies_detection\frontend\krishika-frontend"
+npm install
+npm run dev
+
