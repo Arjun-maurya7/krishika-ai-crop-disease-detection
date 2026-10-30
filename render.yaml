@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: krishika-ai-api
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: MONGO_DB_NAME
+        value: krishika_cse494
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: WARMUP_ON_START
+        value: "false"
+      - key: CORS_ORIGINS
+        value: '["*"]'
