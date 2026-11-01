@@ -34,7 +34,8 @@ def connect_db(uri: str, db_name: str) -> None:
         db_name: Database to use
     """
     global _client
-    logger.info("Connecting to MongoDB (PyMongo) at %s …", uri)
+    # Connection strings contain database credentials; never write them to logs.
+    logger.info("Connecting to MongoDB (PyMongo).")
     _client = MongoClient(uri, serverSelectionTimeoutMS=5000)
     # Ping to verify
     _client.admin.command("ping")
