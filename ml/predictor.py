@@ -45,6 +45,7 @@ IMG_SIZE    = 224
 _lock              = threading.Lock()
 _feature_extractor = None
 _model_ready       = False
+_model_loading     = False
 _loaded_svms: dict = {}
 
 
@@ -90,11 +91,15 @@ def _load_feature_extractor() -> None:
 
 def _ensure_model_loaded() -> None:
     """Ensure VGG19 is loaded; thread-safe double-checked locking."""
-    global _model_ready
+    global _model_ready, _model_loading
     if not _model_ready:
         with _lock:
             if not _model_ready:
-                _load_feature_extractor()
+                _model_loading = True
+                try:
+                    _load_feature_extractor()
+                finally:
+                    _model_loading = False
 
 
 def warmup() -> None:

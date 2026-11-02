@@ -55,8 +55,9 @@ async def lifespan(app: FastAPI):
     # 4. Create uploads directory
     Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
 
-    # 5. Warm up VGG19 in background thread
-    if settings.WARMUP_ON_START:
+    # 5. Warm up VGG19 before the first diagnosis. On hosted deployments the
+    # first request must not carry the full model download and initialization.
+    if settings.WARMUP_ON_START or not settings.DEBUG:
         import ml.predictor as predictor
         t = threading.Thread(target=predictor.warmup, daemon=True, name="ml-warmup")
         t.start()
@@ -113,6 +114,7 @@ async def health():
         "status":   "ok",
         "version":  settings.APP_VERSION,
         "ml_ready": predictor._model_ready,
+        "ml_loading": predictor._model_loading,
         "db":       settings.MONGO_DB_NAME,
     }
 

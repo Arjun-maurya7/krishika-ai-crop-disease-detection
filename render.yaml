@@ -15,6 +15,6 @@ services:
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: WARMUP_ON_START
-        value: "false"
+        value: "true"
       - key: CORS_ORIGINS
         value: '["https://krishika-ai-crop-disease-detection-brown.vercel.app"]'

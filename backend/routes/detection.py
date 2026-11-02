@@ -20,6 +20,7 @@ from backend.routes.deps import get_current_farmer, get_db
 from backend.schemas.detection import DetectionResponse, DiagnosisDetail, ImageReference
 from backend.services.prediction_service import run_prediction
 from ml.class_mappings import CLASS_MAPPINGS
+from ml import predictor
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["Disease Detection"])
@@ -93,6 +94,17 @@ async def detect_disease(
     current_farmer: dict       = Depends(get_current_farmer),
     db:             Database   = Depends(get_db),
 ):
+    if not predictor._model_ready:
+        if predictor._model_loading:
+            detail = "The AI model is still warming up on the server. Please wait a minute, then retry."
+        else:
+            detail = "The AI model is not ready yet. Please retry shortly."
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=detail,
+            headers={"Retry-After": "15"},
+        )
+
     # 1. Validate crop
     if crop not in CLASS_MAPPINGS:
         raise HTTPException(

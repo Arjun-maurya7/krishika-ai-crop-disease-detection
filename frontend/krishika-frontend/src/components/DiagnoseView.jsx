@@ -97,6 +97,8 @@ export default function DiagnoseView() {
       let userMessage = `Diagnosis failed: ${message}`;
       if (/invalid or expired|not authenticated|farmer account not found/i.test(message)) {
         userMessage = 'Your session is invalid or expired. Sign in again, then retry the diagnosis.';
+      } else if (/model is (still )?warming up|model is not ready/i.test(message)) {
+        userMessage = message;
       } else if (/failed to fetch|networkerror/i.test(message)) {
         userMessage = 'The browser could not reach or read the API response. Check the API URL and the browser console for network or CORS errors.';
       }
