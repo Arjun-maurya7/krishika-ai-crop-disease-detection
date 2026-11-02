@@ -28,11 +28,19 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
           location_district: district,
         };
         const res = await api.register(payload);
-        onAuthSuccess(res.farmer);
+        const farmer = await api.getMe();
+        if (farmer.farmer_id !== res.farmer?.farmer_id) {
+          throw new Error('The new account session could not be verified.');
+        }
+        onAuthSuccess(farmer);
         onClose();
       } else {
         const res = await api.login(email, password);
-        onAuthSuccess(res.farmer);
+        const farmer = await api.getMe();
+        if (farmer.farmer_id !== res.farmer?.farmer_id) {
+          throw new Error('The account session could not be verified.');
+        }
+        onAuthSuccess(farmer);
         onClose();
       }
     } catch (err) {
@@ -55,7 +63,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         location_state: 'Maharashtra',
         location_district: 'Nashik',
       });
-      onAuthSuccess(res.farmer);
+      const farmer = await api.getMe();
+      if (farmer.farmer_id !== res.farmer?.farmer_id) {
+        throw new Error('The guest session could not be verified.');
+      }
+      onAuthSuccess(farmer);
       onClose();
     } catch (err) {
       setError(err.message || 'Could not create a guest session.');

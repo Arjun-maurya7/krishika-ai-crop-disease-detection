@@ -85,10 +85,15 @@ app = FastAPI(
 )
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
+cors_origins = list(dict.fromkeys([
+    *(origin for origin in settings.CORS_ORIGINS if origin != "*"),
+    "https://krishika-ai-crop-disease-detection-brown.vercel.app",
+]))
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    # This app sends JWTs in the Authorization header and does not use cookies.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -111,6 +116,12 @@ async def health():
         "ml_ready": predictor._model_ready,
         "db":       settings.MONGO_DB_NAME,
     }
+
+
+@app.get("/", tags=["System"], include_in_schema=False)
+async def root():
+    """Provide a simple liveness response for platform probes."""
+    return {"status": "ok", "health_url": "/api/health"}
 
 
 # ── Serve uploaded images as static files ────────────────────────────────────

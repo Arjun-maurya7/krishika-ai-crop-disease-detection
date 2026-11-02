@@ -5,6 +5,7 @@ services:
     buildCommand: pip install -r backend/requirements.txt
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
     plan: free
+    healthCheckPath: /api/health
     autoDeploy: true
     envVars:
       - key: MONGO_URI
@@ -16,4 +17,4 @@ services:
       - key: WARMUP_ON_START
         value: "false"
       - key: CORS_ORIGINS
-        value: '["*"]'
+        value: '["https://krishika-ai-crop-disease-detection-brown.vercel.app"]'

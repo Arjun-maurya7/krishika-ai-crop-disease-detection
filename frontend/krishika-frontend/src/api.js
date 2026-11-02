@@ -51,8 +51,12 @@ export const api = {
     const res = await fetch(`${API_BASE}/auth/me`, {
       headers: { ...getAuthHeader() },
     });
-    if (!res.ok) throw new Error('Not authenticated');
-    return res.json();
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(typeof data?.detail === 'string' ? data.detail : 'Not authenticated');
+    }
+    if (!data?.farmer_id) throw new Error('The API returned an invalid farmer session.');
+    return data;
   },
 
   logout() {

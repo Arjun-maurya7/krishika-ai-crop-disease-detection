@@ -12,17 +12,29 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   useEffect(() => {
-    const savedFarmer = localStorage.getItem('krishika_farmer');
     const savedToken = localStorage.getItem('krishika_token');
+    const savedFarmer = localStorage.getItem('krishika_farmer');
     if (savedToken === 'demo-jwt-token') {
       api.logout();
-    } else if (savedFarmer) {
+      return;
+    }
+    if (savedFarmer) {
       try {
         setFarmer(JSON.parse(savedFarmer));
       } catch {
-        // ignore
+        localStorage.removeItem('krishika_farmer');
       }
     }
+    if (!savedToken) return;
+
+    api.getMe()
+      .then(setFarmer)
+      .catch((err) => {
+        if (/invalid or expired|not authenticated|farmer account not found/i.test(err.message)) {
+          api.logout();
+          setFarmer(null);
+        }
+      });
   }, []);
 
   const handleLogout = () => {

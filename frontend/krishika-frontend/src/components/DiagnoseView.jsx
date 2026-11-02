@@ -94,9 +94,13 @@ export default function DiagnoseView() {
     } catch (err) {
       console.error('Plant diagnosis failed:', err);
       const message = err.message || 'Please try again.';
-      setError(/invalid or expired|not authenticated|farmer account not found/i.test(message)
-        ? 'Your session is invalid or expired. Sign in again, then retry the diagnosis.'
-        : `Diagnosis failed: ${message}`);
+      let userMessage = `Diagnosis failed: ${message}`;
+      if (/invalid or expired|not authenticated|farmer account not found/i.test(message)) {
+        userMessage = 'Your session is invalid or expired. Sign in again, then retry the diagnosis.';
+      } else if (/failed to fetch|networkerror/i.test(message)) {
+        userMessage = 'The browser could not reach or read the API response. Check the API URL and the browser console for network or CORS errors.';
+      }
+      setError(userMessage);
     } finally {
       setIsScanning(false);
     }
