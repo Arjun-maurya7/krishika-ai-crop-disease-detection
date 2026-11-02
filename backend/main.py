@@ -17,8 +17,9 @@ from contextlib import asynccontextmanager
 
 sys.path.insert(0, ".")  # ensure project root is on path for `ml/` imports
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
@@ -89,14 +90,12 @@ cors_origins = list(dict.fromkeys([
     *(origin for origin in settings.CORS_ORIGINS if origin != "*"),
     "https://krishika-ai-crop-disease-detection-brown.vercel.app",
 ]))
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    # This app sends JWTs in the Authorization header and does not use cookies.
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+cors_config = {
+    "allow_origins": cors_origins,
+    "allow_credentials": False,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth.router)
@@ -124,10 +123,23 @@ async def root():
     return {"status": "ok", "health_url": "/api/health"}
 
 
+@app.exception_handler(Exception)
+async def handle_unexpected_error(request: Request, exc: Exception):
+    logger.exception("Unhandled API error for %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected server error occurred."},
+    )
+
+
 # ── Serve uploaded images as static files ────────────────────────────────────
 uploads_path = Path(settings.UPLOAD_DIR)
 uploads_path.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
+
+# Wrap the complete FastAPI application so CORS headers are added to unhandled
+# error responses as well as normal and HTTPException responses.
+app = CORSMiddleware(app, **cors_config)
 
 
 # ── Run directly ──────────────────────────────────────────────────────────────
