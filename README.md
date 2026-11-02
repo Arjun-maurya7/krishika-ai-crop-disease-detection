@@ -1,3 +1,13 @@
+---
+title: Krishika AI API
+emoji: 🌿
+colorFrom: green
+colorTo: yellow
+sdk: docker
+app_port: 7860
+short_description: FastAPI crop disease detection backend
+---
+
 # Krishika AI — Intelligent Crop Disease Detection & Agricultural Advisory System
 
 **Academic Submission for CSE494: Intelligent NoSQL Databases (MongoDB)**
@@ -119,6 +129,24 @@ python scripts/seed_db.py
 cd frontend/krishika-frontend
 npm install
 ```
+
+## Deploy the backend to Hugging Face Spaces
+
+The root `Dockerfile` runs the FastAPI backend on Space port `7860`. Create a Docker Space named `krishika-ai-api`, then upload the backend files and trained models from this repository:
+
+```powershell
+hf auth login
+hf upload YOUR_HF_USERNAME/krishika-ai-api . . --repo-type space `
+  --include README.md --include Dockerfile --include .dockerignore `
+  --include "backend/**" --include "ml/**" --include "scripts/**" --include "trained_models/**" `
+  --commit-message "Deploy Krishika AI API"
+```
+
+In the Space settings, add `MONGO_URI` and `JWT_SECRET_KEY` as **Secrets**. Reuse the existing JWT secret if you need existing sessions to remain valid. Set `MONGO_DB_NAME` to `krishika_cse494` if needed. Never commit these values to the repository.
+
+After the Space is running, set the Vercel environment variable `VITE_API_URL` to `https://YOUR_HF_SPACE_HOST/api` and redeploy the frontend. The Space's `CORS_ORIGINS` should include `https://krishika-ai-crop-disease-detection-brown.vercel.app`.
+
+Hugging Face requires a PRO subscription to create Docker Spaces on CPU Basic hardware. The Docker Space uses ephemeral local disk, so uploaded image files can disappear when the Space restarts; diagnosis records remain in MongoDB.
 
 ---
 
