@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 import { api } from '../api';
 
 export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
-  if (!isOpen) return null;
-
   const [isRegister, setIsRegister] = useState(false);
-  const [phone, setPhone] = useState('9876543210');
-  const [password, setPassword] = useState('FarmerPass123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('Ramesh Patel');
   const [state, setState] = useState('Maharashtra');
   const [district, setDistrict] = useState('Nashik');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,17 +21,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     try {
       if (isRegister) {
         const payload = {
-          phone,
+          name: fullName,
+          email,
           password,
-          full_name: fullName,
-          state,
-          district,
+          location_state: state,
+          location_district: district,
         };
         const res = await api.register(payload);
         onAuthSuccess(res.farmer);
         onClose();
       } else {
-        const res = await api.login(phone, password);
+        const res = await api.login(email, password);
         onAuthSuccess(res.farmer);
         onClose();
       }
@@ -42,19 +42,26 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     }
   };
 
-  const handleDemoSignIn = () => {
-    const demoFarmer = {
-      id: 'demo-farmer-01',
-      phone: '9876543210',
-      full_name: 'Ramesh Patel',
-      state: 'Maharashtra',
-      district: 'Nashik',
-      crops_grown: ['Tomato', 'Grape', 'Corn'],
-    };
-    localStorage.setItem('krishika_token', 'demo-jwt-token');
-    localStorage.setItem('krishika_farmer', JSON.stringify(demoFarmer));
-    onAuthSuccess(demoFarmer);
-    onClose();
+  const handleDemoSignIn = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const guestEmail = `guest-${crypto.randomUUID()}@guest.krishika.ai`;
+      const guestPassword = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+      const res = await api.register({
+        name: 'Guest Farmer',
+        email: guestEmail,
+        password: guestPassword,
+        location_state: 'Maharashtra',
+        location_district: 'Nashik',
+      });
+      onAuthSuccess(res.farmer);
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Could not create a guest session.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -121,13 +128,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
 
           <div>
             <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-              Mobile Phone
+              Email
             </label>
             <input
-              type="tel"
+              type="email"
               required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="input-control"
             />
           </div>
@@ -201,10 +208,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
           <button
             type="button"
             onClick={handleDemoSignIn}
+            disabled={loading}
             className="btn-secondary btn-sm"
             style={{ fontSize: '0.82rem' }}
           >
-            Quick 1-Click Guest Access
+            {loading ? 'Creating Guest Session...' : 'Quick 1-Click Guest Access'}
           </button>
         </div>
       </div>

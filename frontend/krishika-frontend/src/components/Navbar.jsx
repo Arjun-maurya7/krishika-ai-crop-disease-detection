@@ -95,10 +95,12 @@ export default function Navbar({ activeTab, setActiveTab, farmer, onOpenAuth, on
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ textAlign: 'right', lineHeight: 1.2 }}>
                 <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>
-                  {farmer.full_name || farmer.phone}
+                  {farmer.name || farmer.full_name || farmer.email || farmer.phone}
                 </div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--emerald-400)' }}>
-                  {farmer.district ? `${farmer.district}, ${farmer.state}` : 'Active Member'}
+                  {farmer.location?.district || farmer.district
+                    ? `${farmer.location?.district || farmer.district}, ${farmer.location?.state || farmer.state || ''}`
+                    : 'Active Member'}
                 </div>
               </div>
               <button

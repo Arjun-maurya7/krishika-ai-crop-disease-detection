@@ -1,5 +1,8 @@
 // api.js — Krishika AI Client Layer
-const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
+const API_BASE = (
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? 'https://krishika-ai-api.onrender.com/api' : '/api')
+).replace(/\/+$/, '');
 
 function getAuthHeader() {
   const token = localStorage.getItem('krishika_token');
@@ -26,15 +29,15 @@ export const api = {
     return data;
   },
 
-  async login(phone, password) {
+  async login(email, password) {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, password }),
+      body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Invalid phone or password' }));
-      throw new Error(err.detail || 'Invalid phone or password');
+      const err = await res.json().catch(() => ({ detail: 'Invalid email or password' }));
+      throw new Error(err.detail || 'Invalid email or password');
     }
     const data = await res.json();
     if (data.access_token) {
@@ -60,7 +63,7 @@ export const api = {
   // ── Plant Health & Disease Diagnosis ──
   async detect(file, crop) {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('image', file);
     formData.append('crop', crop);
 
     const res = await fetch(`${API_BASE}/detect`, {
@@ -68,11 +71,24 @@ export const api = {
       headers: { ...getAuthHeader() },
       body: formData,
     });
+    const data = await res.json().catch(() => null);
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Detection failed' }));
-      throw new Error(err.detail || 'Detection failed');
+      const detail = data?.detail;
+      throw new Error(
+        typeof detail === 'string' ? detail : `Detection failed (${res.status})`
+      );
     }
-    return res.json();
+    if (!data || typeof data !== 'object' || !data.predicted_disease || !data.crop_name) {
+      throw new Error('The API returned an invalid diagnosis response. Check the backend URL and deployment.');
+    }
+
+    return {
+      ...data,
+      id: data.detection_id,
+      crop: data.crop_name,
+      disease: data.predicted_disease,
+      ...(data.diagnosis || {}),
+    };
   },
 
   // ── Diagnosis History ──

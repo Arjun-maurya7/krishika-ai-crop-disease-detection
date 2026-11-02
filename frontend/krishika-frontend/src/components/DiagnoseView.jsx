@@ -35,6 +35,12 @@ export default function DiagnoseView() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
+  const handleCropChange = (crop) => {
+    setSelectedCrop(crop);
+    setResult(null);
+    setError(null);
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -47,8 +53,21 @@ export default function DiagnoseView() {
 
   const handleUseSample = async () => {
     try {
-      const res = await fetch(SAMPLE_LEAF_DATA_URL);
-      const blob = await res.blob();
+      const sampleImage = new Image();
+      sampleImage.src = SAMPLE_LEAF_DATA_URL;
+      await sampleImage.decode();
+
+      const canvas = document.createElement('canvas');
+      canvas.width = sampleImage.naturalWidth;
+      canvas.height = sampleImage.naturalHeight;
+      canvas.getContext('2d').drawImage(sampleImage, 0, 0);
+
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob((imageBlob) => {
+          if (imageBlob) resolve(imageBlob);
+          else reject(new Error('Could not convert the sample image.'));
+        }, 'image/png');
+      });
       const file = new File([blob], `sample_${selectedCrop.toLowerCase()}_leaf.png`, { type: 'image/png' });
       setImageFile(file);
       setPreviewUrl(SAMPLE_LEAF_DATA_URL);
@@ -73,30 +92,11 @@ export default function DiagnoseView() {
       const response = await api.detect(imageFile, selectedCrop);
       setResult(response);
     } catch (err) {
-      console.warn('API error, loading diagnostic demo:', err);
-      // Clean fallback demo
-      setResult({
-        id: "diag-" + Date.now().toString(16),
-        crop: selectedCrop,
-        disease: selectedCrop === 'Tomato' ? 'Early Blight' : 'Fungal Leaf Spot',
-        confidence: 0.94,
-        is_uncertain: false,
-        severity: "High",
-        cause: "Alternaria solani fungal pathogen thriving in warm, humid weather.",
-        remedy: "Apply copper-based fungicides (Mancozeb or Copper Oxychloride 50 WP @ 3g/L). Remove lower infected leaves and avoid wetting leaves during irrigation.",
-        impact: "Severe foliar necrosis; up to 50% yield loss if left unmanaged.",
-        symptoms: [
-          "Concentric dark rings with target-board appearance on older foliage",
-          "Yellow chlorotic halo around leaf spots",
-          "Premature leaf drop and stem cankers"
-        ],
-        preventive_measures: [
-          "Maintain optimal plant spacing for air circulation",
-          "Use drip irrigation rather than overhead sprinklers",
-          "Practice 3-year crop rotation with non-solanaceous plants"
-        ],
-        created_at: new Date().toISOString()
-      });
+      console.error('Plant diagnosis failed:', err);
+      const message = err.message || 'Please try again.';
+      setError(/invalid or expired|not authenticated|farmer account not found/i.test(message)
+        ? 'Your session is invalid or expired. Sign in again, then retry the diagnosis.'
+        : `Diagnosis failed: ${message}`);
     } finally {
       setIsScanning(false);
     }
@@ -144,7 +144,7 @@ export default function DiagnoseView() {
                 <button
                   key={crop}
                   type="button"
-                  onClick={() => setSelectedCrop(crop)}
+                  onClick={() => handleCropChange(crop)}
                   style={{
                     padding: '6px 12px',
                     borderRadius: 'var(--radius-sm)',
@@ -169,7 +169,7 @@ export default function DiagnoseView() {
             </label>
             <select
               value={selectedCrop}
-              onChange={(e) => setSelectedCrop(e.target.value)}
+              onChange={(e) => handleCropChange(e.target.value)}
               className="input-control"
             >
               {AVAILABLE_CROPS.map((crop) => (

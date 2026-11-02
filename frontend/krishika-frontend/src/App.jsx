@@ -13,7 +13,10 @@ export default function App() {
 
   useEffect(() => {
     const savedFarmer = localStorage.getItem('krishika_farmer');
-    if (savedFarmer) {
+    const savedToken = localStorage.getItem('krishika_token');
+    if (savedToken === 'demo-jwt-token') {
+      api.logout();
+    } else if (savedFarmer) {
       try {
         setFarmer(JSON.parse(savedFarmer));
       } catch {
