@@ -95,16 +95,19 @@ def _seed_diseases(db: Database) -> None:
       and joined at query time using $lookup aggregation.
       This avoids duplication and keeps the schema normalized.
     """
+    from ml.class_mappings import CLASS_MAPPINGS
     from ml.disease_db import AGRI_DATABASE
+    crop_name_map = {k.lower(): k for k in CLASS_MAPPINGS}
     collection = db["diseases"]
     count      = 0
     for crop_key, diseases in AGRI_DATABASE.items():
+        canonical_crop = crop_name_map.get(crop_key.lower(), crop_key)
         for disease_name, info in diseases.items():
             severity = info.get("severity", "medium")
             doc = {
                 "disease_id":        f"{crop_key}_{disease_name}".replace(" ", "_").lower(),
                 "crop_id":           crop_key.lower(),
-                "crop_name":         crop_key,
+                "crop_name":         canonical_crop,
                 "disease_name":      disease_name,
                 "symptoms":          info.get("symptoms", []),
                 "causes":            info.get("cause", ""),

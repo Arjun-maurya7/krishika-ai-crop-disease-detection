@@ -89,7 +89,7 @@ app = FastAPI(
 # ── CORS ──────────────────────────────────────────────────────────────────────
 # Origins are loaded entirely from the CORS_ORIGINS environment variable.
 # Set CORS_ORIGINS in .env or in the EC2 environment (see .env.example).
-cors_origins = [o for o in settings.CORS_ORIGINS if o != "*"]
+cors_origins = list(settings.CORS_ORIGINS)
 cors_config = {
     "allow_origins": cors_origins,
     "allow_credentials": False,

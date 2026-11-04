@@ -222,7 +222,10 @@ def get_detection_with_disease_info(db: Database, detection_id: str, farmer_id: 
                         "$match": {
                             "$expr": {
                                 "$and": [
-                                    {"$eq": ["$crop_name",    "$$crop"]},
+                                    {"$eq": [
+                                        {"$toLower": "$crop_name"},
+                                        {"$toLower": "$$crop"}
+                                    ]},
                                     {"$eq": ["$disease_name", "$$disease"]},
                                 ]
                             }

@@ -94,6 +94,10 @@ pip install -r backend/requirements.txt
 
 # Create uploads directory
 mkdir -p uploads
+
+# Pre-cache VGG19 ImageNet weights (~80 MB) into /home/ubuntu/.keras/models/
+# This ensures zero network latency on first diagnosis request and startup
+python3 -c "from tensorflow.keras.applications.vgg19 import VGG19; VGG19(weights='imagenet', include_top=False, input_shape=(224, 224, 3))"
 ```
 
 > **Note on trained_models/**: The `.pkl` SVM models must be present in `trained_models/`.
@@ -138,6 +142,27 @@ CONFIDENCE_THRESHOLD=0.60
 ```bash
 # Protect the .env file — readable only by ubuntu user
 chmod 600 .env
+```
+
+### 5.1 Initialize and Seed MongoDB Atlas Collections
+
+You can run the initialization and seed script once to create all 4 collections, `$jsonSchema` validators, unique/compound indexes, and reference crop/disease records:
+
+```bash
+python3 -c "
+from backend.config import get_settings
+from backend.database.connection import connect_db, get_db, close_db
+from backend.database.collections import ensure_collections_and_indexes
+from scripts.seed_db import run_seed
+
+s = get_settings()
+connect_db(s.MONGO_URI, s.MONGO_DB_NAME)
+db = get_db(s.MONGO_DB_NAME)
+ensure_collections_and_indexes(db)
+run_seed(db)
+close_db()
+print('MongoDB Atlas collections, schema validators, indexes, and reference data ready!')
+"
 ```
 
 ---
@@ -193,6 +218,14 @@ sudo rm -f /etc/nginx/sites-enabled/default
 
 # Test config syntax
 sudo nginx -t
+
+# Permissions for Nginx (Ubuntu 24.04 Least-Privilege):
+# Do NOT make /home/ubuntu world-readable (755). Instead, add www-data to the ubuntu group:
+sudo usermod -aG ubuntu www-data
+sudo chmod 750 /home/ubuntu
+sudo chmod g+x /home/ubuntu
+sudo chmod -R 750 /home/ubuntu/crop_disease_detection/uploads
+sudo chgrp -R ubuntu /home/ubuntu/crop_disease_detection/uploads
 
 # Reload Nginx
 sudo systemctl reload nginx

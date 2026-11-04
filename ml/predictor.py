@@ -78,6 +78,16 @@ def _load_feature_extractor() -> None:
     tf.get_logger().setLevel("ERROR")
     os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
     os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
+    os.environ.setdefault("OMP_NUM_THREADS", "2")
+    os.environ.setdefault("TF_NUM_INTRAOP_THREADS", "2")
+    os.environ.setdefault("TF_NUM_INTEROP_THREADS", "1")
+
+    # Constrain thread pools for 2 vCPU EC2 instance (t3.small)
+    try:
+        tf.config.threading.set_inter_op_parallelism_threads(1)
+        tf.config.threading.set_intra_op_parallelism_threads(2)
+    except Exception as thread_exc:
+        logger.debug("TensorFlow threading limits already set: %s", thread_exc)
 
     logger.info("Loading VGG19 feature extractor …")
     base = VGG19(weights="imagenet", include_top=False,
@@ -98,13 +108,19 @@ def _ensure_model_loaded() -> None:
                 _model_loading = True
                 try:
                     _load_feature_extractor()
+                except Exception as exc:
+                    logger.exception("Failed to load VGG19 feature extractor: %s", exc)
+                    raise
                 finally:
                     _model_loading = False
 
 
 def warmup() -> None:
     """Public helper — call in a background thread to pre-warm the model."""
-    _ensure_model_loaded()
+    try:
+        _ensure_model_loaded()
+    except Exception as exc:
+        logger.exception("ML model warmup failed during background initialization: %s", exc)
 
 
 def _get_svm(crop: str):

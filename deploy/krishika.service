@@ -23,9 +23,17 @@ WorkingDirectory=/home/ubuntu/crop_disease_detection
 # Load environment variables from .env file
 EnvironmentFile=/home/ubuntu/crop_disease_detection/.env
 
-# Suppress TensorFlow verbose logging
+# Runtime environment
+Environment=HOME=/home/ubuntu
+Environment=KERAS_HOME=/home/ubuntu/.keras
+Environment=PYTHONUNBUFFERED=1
+
+# Suppress TensorFlow verbose logging & optimize CPU threading for 2 vCPU EC2 (t3.small)
 Environment=TF_CPP_MIN_LOG_LEVEL=3
 Environment=TF_ENABLE_ONEDNN_OPTS=0
+Environment=OMP_NUM_THREADS=2
+Environment=TF_NUM_INTRAOP_THREADS=2
+Environment=TF_NUM_INTEROP_THREADS=1
 
 # Uvicorn startup
 # --workers 1  : single worker to avoid loading VGG19 multiple times (RAM constrained)
