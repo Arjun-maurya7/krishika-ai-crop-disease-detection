@@ -20,6 +20,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
 
     try {
       if (isRegister) {
+        if (password.length < 8) {
+          setError('Password must be at least 8 characters long.');
+          setLoading(false);
+          return;
+        }
         const payload = {
           name: fullName,
           email,
@@ -44,7 +49,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         onClose();
       }
     } catch (err) {
-      setError(err.message || 'Authentication failed. Please verify credentials.');
+      const msg = typeof err === 'string' ? err : (err?.message || 'Authentication failed. Please verify credentials.');
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -153,11 +159,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
 
           <div>
             <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-              Password
+              Password {isRegister && <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>(minimum 8 characters)</span>}
             </label>
             <input
               type="password"
               required
+              minLength={isRegister ? 8 : 1}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input-control"

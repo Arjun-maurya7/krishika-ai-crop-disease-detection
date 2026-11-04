@@ -14,12 +14,15 @@ from backend.config import get_settings
 
 def hash_password(plain: str) -> str:
     """Return bcrypt hash of the given plain-text password."""
-    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
+    # Truncate to 72 bytes to avoid bcrypt library exception on long inputs
+    pwd_bytes = plain.encode("utf-8")[:72]
+    return bcrypt.hashpw(pwd_bytes, bcrypt.gensalt()).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     """Return True if plain matches the stored bcrypt hash."""
-    return bcrypt.checkpw(plain.encode(), hashed.encode())
+    pwd_bytes = plain.encode("utf-8")[:72]
+    return bcrypt.checkpw(pwd_bytes, hashed.encode())
 
 
 def create_access_token(payload: dict[str, Any]) -> str:

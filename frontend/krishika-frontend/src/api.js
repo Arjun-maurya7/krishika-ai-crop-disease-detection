@@ -4,6 +4,24 @@ const API_BASE = (
   (import.meta.env.PROD ? 'https://krishika-ai-api.onrender.com/api' : '/api')
 ).replace(/\/+$/, '');
 
+function extractErrorDetail(data, fallback = 'Request failed') {
+  if (!data) return fallback;
+  const detail = data.detail;
+  if (!detail) return data.message || fallback;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail.map(item => {
+      if (typeof item === 'string') return item;
+      const field = item.loc ? item.loc.filter(l => l !== 'body').join('.') : '';
+      return field ? (field + ": " + item.msg) : (item.msg || JSON.stringify(item));
+    }).join('; ');
+  }
+  if (typeof detail === 'object') {
+    return detail.msg || detail.message || JSON.stringify(detail);
+  }
+  return String(detail);
+}
+
 function getAuthHeader() {
   const token = localStorage.getItem('krishika_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -19,7 +37,7 @@ export const api = {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: 'Registration failed' }));
-      throw new Error(err.detail || 'Registration failed');
+      throw new Error(extractErrorDetail(err, 'Registration failed'));
     }
     const data = await res.json();
     if (data.access_token) {
@@ -37,7 +55,7 @@ export const api = {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: 'Invalid email or password' }));
-      throw new Error(err.detail || 'Invalid email or password');
+      throw new Error(extractErrorDetail(err, 'Invalid email or password'));
     }
     const data = await res.json();
     if (data.access_token) {
@@ -53,7 +71,7 @@ export const api = {
     });
     const data = await res.json().catch(() => null);
     if (!res.ok) {
-      throw new Error(typeof data?.detail === 'string' ? data.detail : 'Not authenticated');
+      throw new Error(extractErrorDetail(data, 'Not authenticated'));
     }
     if (!data?.farmer_id) throw new Error('The API returned an invalid farmer session.');
     return data;

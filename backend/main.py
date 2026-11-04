@@ -124,6 +124,24 @@ async def root():
     return {"status": "ok", "health_url": "/api/health"}
 
 
+from fastapi.exceptions import RequestValidationError
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Format Pydantic 422 validation errors into human-readable detail strings."""
+    errors = []
+    for err in exc.errors():
+        field = " -> ".join(str(loc) for loc in err.get("loc", []) if loc != "body")
+        msg = err.get("msg", "Invalid value")
+        errors.append(f"{field}: {msg}" if field else msg)
+    detail_str = "; ".join(errors) if errors else "Invalid request data."
+    return JSONResponse(
+        status_code=422,
+        content={"detail": detail_str},
+    )
+
+
 @app.exception_handler(Exception)
 async def handle_unexpected_error(request: Request, exc: Exception):
     logger.exception("Unhandled API error for %s %s", request.method, request.url.path)
