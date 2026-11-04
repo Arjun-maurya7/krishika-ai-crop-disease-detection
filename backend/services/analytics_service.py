@@ -120,6 +120,7 @@ def get_farmer_dashboard_stats(db: Database, farmer_id: str) -> dict:
                 "_id": 0,
                 "detection_id": 1, "crop_name": 1, "predicted_disease": 1,
                 "confidence": 1, "severity": 1, "is_uncertain": 1, "detected_at": 1,
+                "diagnosis_details": 1, "image_reference": 1,
             },
         )
         .sort("detected_at", DESCENDING)

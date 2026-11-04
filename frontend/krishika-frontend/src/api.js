@@ -117,13 +117,30 @@ export const api = {
   async getHistory(page = 1, limit = 12, crop = null, severity = null) {
     const params = new URLSearchParams({ page, limit });
     if (crop) params.append('crop', crop);
-    if (severity) params.append('severity', severity);
+    if (severity) {
+      const s = severity.toLowerCase();
+      params.append('severity', s === 'low' ? 'healthy' : s);
+    }
 
     const res = await fetch(`${API_BASE}/history?${params.toString()}`, {
       headers: { ...getAuthHeader() },
     });
     if (!res.ok) throw new Error('Failed to load history');
-    return res.json();
+    const data = await res.json();
+    const rawItems = Array.isArray(data?.items) ? data.items : [];
+    const items = rawItems.map((item) => ({
+      ...item,
+      id: item.id || item.detection_id,
+      crop: item.crop || item.crop_name,
+      disease: item.disease || item.predicted_disease,
+      created_at: item.created_at || item.detected_at,
+      remedy: item.remedy || item.diagnosis?.remedy || '',
+      diagnosis: item.diagnosis || {
+        severity: item.severity,
+        remedy: item.remedy || '',
+      },
+    }));
+    return { ...data, items };
   },
 
   async deleteHistory(detectionId) {
@@ -132,7 +149,8 @@ export const api = {
       headers: { ...getAuthHeader() },
     });
     if (!res.ok) throw new Error('Failed to delete diagnosis');
-    return res.json();
+    if (res.status === 204) return true;
+    return res.json().catch(() => ({}));
   },
 
   // ── Crop Knowledge Base & Disease Directory ──

@@ -4,9 +4,9 @@ Pydantic models for disease detection responses, history, and dashboard.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ── Embedded sub-schemas ──────────────────────────────────────────────────────
@@ -53,6 +53,52 @@ class DetectionListItem(BaseModel):
     severity:          str
     is_uncertain:      bool
     detected_at:       datetime
+    remedy:            Optional[str] = None
+    diagnosis:         Optional[DiagnosisDetail] = None
+    image_url:         Optional[str] = None
+    id:                Optional[str] = None
+    crop:              Optional[str] = None
+    disease:           Optional[str] = None
+    created_at:        Optional[datetime] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def pre_populate(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if not values.get("id") and values.get("detection_id"):
+                values["id"] = values["detection_id"]
+            if not values.get("crop") and values.get("crop_name"):
+                values["crop"] = values["crop_name"]
+            if not values.get("disease") and values.get("predicted_disease"):
+                values["disease"] = values["predicted_disease"]
+            if not values.get("created_at") and values.get("detected_at"):
+                values["created_at"] = values["detected_at"]
+            diag = values.get("diagnosis_details")
+            if not values.get("remedy") and isinstance(diag, dict):
+                values["remedy"] = diag.get("remedy")
+            if not values.get("diagnosis") and isinstance(diag, dict):
+                values["diagnosis"] = diag
+            img_ref = values.get("image_reference")
+            if not values.get("image_url") and isinstance(img_ref, dict):
+                fn = img_ref.get("filename")
+                did = values.get("detection_id")
+                if fn and did:
+                    values["image_url"] = f"/uploads/{did}/{fn}"
+        return values
+
+    @model_validator(mode="after")
+    def populate_aliases(self):
+        if not self.id:
+            self.id = self.detection_id
+        if not self.crop:
+            self.crop = self.crop_name
+        if not self.disease:
+            self.disease = self.predicted_disease
+        if not self.created_at:
+            self.created_at = self.detected_at
+        if not self.remedy and self.diagnosis:
+            self.remedy = self.diagnosis.remedy
+        return self
 
 
 class DetectionListResponse(BaseModel):

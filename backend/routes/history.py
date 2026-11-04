@@ -42,15 +42,18 @@ async def list_history(
     page:       int            = Query(default=1,  ge=1,  description="Page number"),
     page_size:  int            = Query(default=10, ge=1, le=50, description="Items per page"),
     crop:       Optional[str]  = Query(default=None, description="Filter by crop name"),
-    severity:   Optional[str]  = Query(default=None, pattern="^(healthy|medium|high)$"),
+    severity:   Optional[str]  = Query(default=None, pattern="(?i)^(healthy|medium|high|low)$"),
     date_from:  Optional[datetime] = Query(default=None, description="ISO datetime lower bound"),
     date_to:    Optional[datetime] = Query(default=None, description="ISO datetime upper bound"),
     current_farmer: dict     = Depends(get_current_farmer),
     db:             Database = Depends(get_db),
 ):
     query: dict = {"farmer_id": current_farmer["farmer_id"]}
-    if crop:      query["crop_name"] = crop
-    if severity:  query["severity"]  = severity
+    if crop:
+        query["crop_name"] = crop
+    if severity:
+        sev_clean = severity.lower()
+        query["severity"] = "healthy" if sev_clean == "low" else sev_clean
     if date_from or date_to:
         dq: dict = {}
         if date_from: dq["$gte"] = date_from
@@ -74,18 +77,32 @@ async def list_history(
 
     items, total = await loop.run_in_executor(None, _query)
 
-    list_items = [
-        DetectionListItem(
-            detection_id      = d["detection_id"],
-            crop_name         = d["crop_name"],
-            predicted_disease = d["predicted_disease"],
-            confidence        = d["confidence"],
-            severity          = d["severity"],
-            is_uncertain      = d.get("is_uncertain", False),
-            detected_at       = d["detected_at"],
+    list_items = []
+    for d in items:
+        diag = d.get("diagnosis_details") or {}
+        diag_obj = DiagnosisDetail(**diag) if diag else None
+        img_ref = d.get("image_reference") or {}
+        img_fn = img_ref.get("filename")
+        img_url = f"/uploads/{d['detection_id']}/{img_fn}" if img_fn else None
+
+        list_items.append(
+            DetectionListItem(
+                detection_id      = d["detection_id"],
+                id                = d["detection_id"],
+                crop_name         = d["crop_name"],
+                crop              = d["crop_name"],
+                predicted_disease = d["predicted_disease"],
+                disease           = d["predicted_disease"],
+                confidence        = d["confidence"],
+                severity          = d["severity"],
+                is_uncertain      = d.get("is_uncertain", False),
+                detected_at       = d["detected_at"],
+                created_at        = d["detected_at"],
+                remedy            = diag.get("remedy") or "",
+                diagnosis         = diag_obj,
+                image_url         = img_url,
+            )
         )
-        for d in items
-    ]
 
     total_pages = math.ceil(total / page_size) if total > 0 else 1
     return DetectionListResponse(

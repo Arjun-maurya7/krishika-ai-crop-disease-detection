@@ -71,12 +71,13 @@ export default function HistoryView() {
   };
 
   const handleDelete = async (id) => {
+    if (!id) return;
     if (!window.confirm('Delete this diagnosis record?')) return;
     try {
       await api.deleteHistory(id);
       loadHistory();
     } catch {
-      setHistory((prev) => prev.filter((item) => item.id !== id));
+      setHistory((prev) => prev.filter((item) => (item.id || item.detection_id) !== id));
     }
   };
 
@@ -114,9 +115,9 @@ export default function HistoryView() {
             style={{ width: 'auto', padding: '8px 12px', fontSize: '0.85rem' }}
           >
             <option value="">All Risk Levels</option>
-            <option value="High">High Risk</option>
-            <option value="Medium">Moderate Risk</option>
-            <option value="Low">Low / Healthy</option>
+            <option value="high">High Risk</option>
+            <option value="medium">Moderate Risk</option>
+            <option value="healthy">Low / Healthy</option>
           </select>
 
           <select
@@ -149,17 +150,17 @@ export default function HistoryView() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
           {history.map((item) => (
-            <div key={item.id} className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
+            <div key={item.id || item.detection_id} className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                     <span style={{ fontWeight: 700, fontSize: '1.1rem', color: '#fff' }}>
-                      {item.crop}
+                      {item.crop || item.crop_name}
                     </span>
                     {getSeverityBadge(item.diagnosis?.severity || item.severity)}
                   </div>
                   <div style={{ fontSize: '0.95rem', color: 'var(--emerald-400)', fontWeight: 600 }}>
-                    {item.disease?.replace(/_/g, ' ')}
+                    {(item.disease || item.predicted_disease)?.replace(/_/g, ' ')}
                   </div>
                 </div>
 
@@ -186,7 +187,7 @@ export default function HistoryView() {
                 border: '1px solid var(--border-subtle)',
               }}>
                 <strong style={{ color: 'var(--emerald-400)' }}>Prescribed Action: </strong>
-                {item.diagnosis?.remedy || item.remedy}
+                {item.diagnosis?.remedy || item.remedy || 'Monitor crop regularly and maintain optimal soil moisture.'}
               </div>
 
               {/* Footer */}
@@ -200,13 +201,13 @@ export default function HistoryView() {
                 color: 'var(--text-muted)',
               }}>
                 <span>
-                  {item.created_at ? new Date(item.created_at).toLocaleDateString(undefined, {
+                  {(item.created_at || item.detected_at) ? new Date(item.created_at || item.detected_at).toLocaleDateString(undefined, {
                     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                   }) : 'Recent'}
                 </span>
 
                 <button
-                  onClick={() => handleDelete(item.id)}
+                  onClick={() => handleDelete(item.id || item.detection_id)}
                   style={{
                     color: 'var(--text-muted)',
                     fontSize: '0.78rem',

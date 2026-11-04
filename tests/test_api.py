@@ -36,8 +36,9 @@ def test_register_duplicate_email(client, auth_headers):
     """Re-registering with same email must return 409."""
     # Use a fixed email so we can register it twice
     email = f"dup_{uuid.uuid4().hex[:6]}@test.com"
-    payload = {"name": "A", "email": email, "password": "pass12345"}
-    client.post("/api/auth/register", json=payload)
+    payload = {"name": "Farmer Duplicate", "email": email, "password": "pass12345"}
+    first = client.post("/api/auth/register", json=payload)
+    assert first.status_code == 201
     resp = client.post("/api/auth/register", json=payload)
     assert resp.status_code == 409
 
@@ -120,6 +121,56 @@ def test_history_empty_initially(client, auth_headers):
     assert "items" in data
     assert "total" in data
     assert "total_pages" in data
+
+
+def test_history_fields_retained(client, auth_headers):
+    """Test that detection history items retain remedy, crop, disease, and date."""
+    from datetime import datetime, timezone
+    from backend.database.collections import HISTORY_COLLECTION
+    from backend.database.connection import get_db
+    from backend.config import get_settings
+
+    db = get_db(get_settings().MONGO_DB_NAME)
+    # Get current farmer id from /api/auth/me
+    me = client.get("/api/auth/me", headers=auth_headers).json()
+    farmer_id = me["farmer_id"]
+
+    test_det_id = f"test-det-{uuid.uuid4().hex[:6]}"
+    doc = {
+        "detection_id": test_det_id,
+        "farmer_id": farmer_id,
+        "crop_name": "Tomato",
+        "predicted_disease": "early_blight",
+        "confidence": 0.85,
+        "severity": "medium",
+        "is_uncertain": False,
+        "detected_at": datetime.now(timezone.utc),
+        "diagnosis_details": {
+            "remedy": "Apply copper-based fungicide weekly.",
+            "cause": "Alternaria solani fungus",
+        },
+        "image_reference": {"filename": "tomato_test.jpg", "path": "/uploads/test.jpg"},
+    }
+    db[HISTORY_COLLECTION].insert_one(doc)
+
+    try:
+        resp = client.get("/api/history", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        matching = [item for item in data["items"] if item.get("id") == test_det_id or item.get("detection_id") == test_det_id]
+        assert len(matching) == 1
+        item = matching[0]
+        assert item["crop"] == "Tomato"
+        assert item["disease"] == "early_blight"
+        assert item["remedy"] == "Apply copper-based fungicide weekly."
+        assert "created_at" in item
+        assert "detected_at" in item
+
+        # Test delete endpoint
+        del_resp = client.delete(f"/api/history/{test_det_id}", headers=auth_headers)
+        assert del_resp.status_code == 204
+    finally:
+        db[HISTORY_COLLECTION].delete_one({"detection_id": test_det_id})
 
 
 def test_history_requires_auth(client):
