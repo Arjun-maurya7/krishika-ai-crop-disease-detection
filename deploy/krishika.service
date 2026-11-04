@@ -1,0 +1,54 @@
+# Krishika AI — systemd service for AWS EC2 (Ubuntu 24.04)
+# Install:
+#   sudo cp deploy/krishika.service /etc/systemd/system/krishika.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable krishika
+#   sudo systemctl start krishika
+#
+# Check status:
+#   sudo systemctl status krishika
+#   sudo journalctl -u krishika -f
+
+[Unit]
+Description=Krishika AI — Crop Disease Detection API (FastAPI + Uvicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/crop_disease_detection
+
+# Load environment variables from .env file
+EnvironmentFile=/home/ubuntu/crop_disease_detection/.env
+
+# Suppress TensorFlow verbose logging
+Environment=TF_CPP_MIN_LOG_LEVEL=3
+Environment=TF_ENABLE_ONEDNN_OPTS=0
+
+# Uvicorn startup
+# --workers 1  : single worker to avoid loading VGG19 multiple times (RAM constrained)
+# --no-access-log : access logs handled by Nginx; reduces disk I/O
+ExecStart=/home/ubuntu/crop_disease_detection/.venv/bin/uvicorn \
+    backend.main:app \
+    --host 127.0.0.1 \
+    --port 8001 \
+    --workers 1 \
+    --no-access-log
+
+# Restart on crash, with backoff
+Restart=on-failure
+RestartSec=5s
+StartLimitIntervalSec=60s
+StartLimitBurst=5
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+# Allow enough time for VGG19 warmup on startup (60 s is generous for t3.small)
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

@@ -87,10 +87,9 @@ app = FastAPI(
 )
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
-cors_origins = list(dict.fromkeys([
-    *(origin for origin in settings.CORS_ORIGINS if origin != "*"),
-    "https://krishika-ai-crop-disease-detection-brown.vercel.app",
-]))
+# Origins are loaded entirely from the CORS_ORIGINS environment variable.
+# Set CORS_ORIGINS in .env or in the EC2 environment (see .env.example).
+cors_origins = [o for o in settings.CORS_ORIGINS if o != "*"]
 cors_config = {
     "allow_origins": cors_origins,
     "allow_credentials": False,
@@ -150,7 +149,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "backend.main:app",
         host="0.0.0.0",
-        port=8001,        # 8001 to avoid collision with original backend on 8000
-        reload=True,
-        reload_dirs=["."],
+        port=settings.PORT,
+        reload=settings.DEBUG,   # reload only in DEBUG mode
     )

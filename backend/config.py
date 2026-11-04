@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     APP_NAME: str    = "Krishika AI — CSE494"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool      = False
+    PORT: int        = 8001   # Uvicorn port (override via PORT env var)
 
     # ── JWT ──────────────────────────────────────────────────────────────────
     JWT_SECRET_KEY:  str = "CHANGE_ME_IN_PRODUCTION_USE_32_CHARS_MIN"
@@ -34,6 +35,8 @@ class Settings(BaseSettings):
     WARMUP_ON_START:      bool  = True
 
     # ── CORS ─────────────────────────────────────────────────────────────────
+    # In production, override via CORS_ORIGINS env var (JSON array string).
+    # Example: CORS_ORIGINS=["https://your-app.vercel.app"]
     CORS_ORIGINS: list[str] = [
         "https://krishika-ai-crop-disease-detection-brown.vercel.app",
         "http://localhost:3000",

@@ -45,3 +45,16 @@ htmlcov/
 
 # Logs
 *.log
+
+# AWS / production secrets
+*.pem
+*.ppk
+.env.production
+.env.staging
+
+# Nginx and systemd generated configs with secrets
+# (commit the templates, not filled-in configs)
+nginx.conf.local
+
+# OS-generated
+Thumbs.db

@@ -1,36 +1,48 @@
-FROM python:3.11-slim
+# Krishika AI — Production Dockerfile
+# Python 3.11 matches .python-version and is compatible with tensorflow-cpu 2.10-2.16
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1 \
-    HOME=/home/user \
-    PORT=7860 \
-    TF_CPP_MIN_LOG_LEVEL=2 \
-    OMP_NUM_THREADS=2 \
-    TF_NUM_INTRAOP_THREADS=2 \
-    TF_NUM_INTEROP_THREADS=1
+# ── Stage 1: Builder ──────────────────────────────────────────────────────────
+FROM python:3.11-slim-bookworm AS builder
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libgomp1 \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --uid 1000 user \
-    && mkdir -p /home/user/app \
-    && chown user:user /home/user/app
+WORKDIR /app
 
-WORKDIR /home/user/app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        libgl1 \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY --chown=user:user backend/requirements.txt backend/requirements.txt
-RUN python -m pip install --upgrade pip \
-    && python -m pip install -r backend/requirements.txt
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY --chown=user:user backend/ backend/
-COPY --chown=user:user ml/ ml/
-COPY --chown=user:user scripts/ scripts/
-COPY --chown=user:user trained_models/ trained_models/
+COPY . .
 
-USER user
+# ── Stage 2: Production ───────────────────────────────────────────────────────
+FROM python:3.11-slim-bookworm
 
-EXPOSE 7860
+WORKDIR /app
 
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "7860", "--proxy-headers"]
+# Install runtime libs for OpenCV
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libgl1 \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /app /app
+
+EXPOSE 8001
+
+# Production defaults — override all sensitive values via docker run -e or docker-compose env_file
+ENV PYTHONUNBUFFERED=1
+ENV DEBUG=false
+ENV PORT=8001
+ENV WARMUP_ON_START=true
+ENV UPLOAD_DIR=uploads
+ENV APP_VERSION=1.0.0
+
+# MONGO_URI, MONGO_DB_NAME, JWT_SECRET_KEY, CORS_ORIGINS must be injected at runtime.
+# DO NOT hardcode credentials here.
+
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]
